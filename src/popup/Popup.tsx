@@ -24,13 +24,13 @@ const handleClick = () => {
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            Grammarly for replies. We’ll add logic later.
+            Grammarly for replies. Don't know what to say? We do! in your voice.
           </p>
           <Button
             className="w-full"
             onClick={handleClick}
           >
-            Try Insert
+            Suggest Reply
           </Button>
         </CardContent>
       </Card>
