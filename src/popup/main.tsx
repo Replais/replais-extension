@@ -1,6 +1,15 @@
-import { createRoot } from 'react-dom/client';
 import '../index.css';
 import Popup from './Popup';
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const root = createRoot(document.getElementById('root')!);
-root.render(<Popup />);
+const queryClient = new QueryClient();
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <Popup />
+    </QueryClientProvider>
+  </React.StrictMode>,
+);
