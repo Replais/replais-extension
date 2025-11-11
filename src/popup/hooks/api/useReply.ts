@@ -64,7 +64,7 @@ export const useReply = (platform: PlatformId) => {
 
   const mutation = useMutation<ReplaisReply, Error, ReplaisRequest>({
     mutationFn: postReply,
-    onSuccess: (response) => {
+    onSuccess: (response: ReplaisReply) => {
       const { updatedContactConfig } = response;
       if (!updatedContactConfig) return;
 
