@@ -1,5 +1,5 @@
 // src/content/adapters/whatsapp.ts
-import type { SiteAdapter } from '@/content/adapters/adapters';
+import type { SiteAdapter, DotPositionConfig } from '@/content/adapters/adapters';
 import type { Attachment, Message, MessageContext, Participant } from '@/types/main.types';
 import { generateContactKey } from '@/utils/storage';
 
@@ -14,9 +14,23 @@ function parsePrePlain(pre: string | null): { timestamp?: string; sender?: strin
 
 
 function getConversationTitle(): string | null {
-  const header = document.querySelector<HTMLElement>('header');
-  const titleEl = header?.querySelector<HTMLElement>('span');
-  return titleEl?.textContent?.trim() ?? null;
+  // Get the first header inside #main (the chat header)
+  const main = document.querySelector('#main');
+  const header = main?.querySelector('header');
+  if (!header) return null;
+  const titleEl = header.querySelector('span');
+  const title = titleEl?.textContent?.trim();
+  
+  // Filter out invalid titles like "chat-filled-refreshed"
+  if (title && 
+      !title.includes('chat-filled') && 
+      !title.includes('refreshed') &&
+      title.length > 0 && 
+      title.length < 100) {
+    return title;
+  }
+  
+  return null;
 }
 
 function getContactKey(): string {
@@ -100,7 +114,6 @@ function buildWhatsAppContext(limit: number = 10): MessageContext | null {
       isGroup: participants.length > 2,
     },
   };
-
   return ctx;
 }
 
@@ -115,6 +128,84 @@ function getWhatsAppComposer(): HTMLElement | null {
   return composer;
 }
 
+function getWhatsAppDotPositionConfig(composer: HTMLElement): DotPositionConfig | null {
+  // For WhatsApp, the composer is a contenteditable div inside a footer
+  // We want to mount the dot relative to the parent container that wraps the input
+  // This allows us to position it inside the input area visually
+  const parent = composer.parentElement;
+  const mountTarget = parent ?? composer;
+
+  return {
+    mountTarget,
+    position: {
+      position: 'absolute',
+      right: '45px', // Leave space for the send/mic button
+      top: '50%',
+      transform: 'translateY(-50%)',
+      zIndex: '10000',
+      pointerEvents: 'auto',
+    } as Partial<CSSStyleDeclaration>,
+  };
+}
+
+// Store timer reference to prevent duplicates
+let globalCheckTimer: ReturnType<typeof setInterval> | null = null;
+
+function setupWhatsAppConversationObserver(onContactChange: () => void): void {
+  const main = document.querySelector('#main');
+  if (!main) {
+    // If #main not found yet, wait a bit and try again
+    setTimeout(() => setupWhatsAppConversationObserver(onContactChange), 1000);
+    return;
+  }
+
+  // Clean up existing timer if it exists
+  if (globalCheckTimer) {
+    clearInterval(globalCheckTimer);
+    globalCheckTimer = null;
+  }
+
+  // Track last contact key and conversation title
+  let lastContactKey: string | null = null;
+  let lastConversationTitle: string | null = null;
+
+  // Function to check for contact changes
+  const checkForContactChange = () => {
+    const currentContactKey = getContactKey();
+    const currentConversationTitle = getConversationTitle();
+    
+    // Check if contact key changed
+    const contactKeyChanged = currentContactKey && currentContactKey !== lastContactKey;
+    
+    // Check if conversation title changed
+    const titleChanged = currentConversationTitle && currentConversationTitle !== lastConversationTitle;
+    
+    if (contactKeyChanged || titleChanged) {
+      console.log('[ReplAIs WhatsApp] Contact changed:', {
+        oldKey: lastContactKey,
+        newKey: currentContactKey,
+        oldTitle: lastConversationTitle,
+        newTitle: currentConversationTitle,
+      });
+      
+      lastContactKey = currentContactKey;
+      lastConversationTitle = currentConversationTitle;
+      onContactChange();
+    }
+  };
+
+  // Initialize last values
+  lastContactKey = getContactKey();
+  lastConversationTitle = getConversationTitle();
+
+  // Simple polling: check every 5 seconds
+  globalCheckTimer = setInterval(() => {
+    checkForContactChange();
+  }, 5000) as unknown as ReturnType<typeof setInterval>;
+
+  console.log('[ReplAIs WhatsApp] Conversation observer set up with polling (5 seconds)');
+}
+
 export const whatsappAdapter: SiteAdapter = {
   id: 'whatsapp',
   matches: (url) => url.includes('web.whatsapp.com'),
@@ -122,4 +213,6 @@ export const whatsappAdapter: SiteAdapter = {
   getComposer: () => getWhatsAppComposer(),
   getContactKey: () => getContactKey(),
   getConversationTitle: () => getConversationTitle(),
+  getDotPositionConfig: (composer) => getWhatsAppDotPositionConfig(composer),
+  setupConversationObserver: (onContactChange) => setupWhatsAppConversationObserver(onContactChange),
 };

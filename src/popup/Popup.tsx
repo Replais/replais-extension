@@ -1,5 +1,6 @@
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { ThemeToggle } from '../components/theme-toggle';
 
 export default function Popup() {
 const handleClick = () => {
@@ -19,8 +20,9 @@ const handleClick = () => {
   return (
     <div className="p-3 w-[280px] font-sans">
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">ReplAIs</CardTitle>
+          <ThemeToggle />
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-sm text-muted-foreground">
